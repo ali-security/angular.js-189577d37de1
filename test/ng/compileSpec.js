@@ -3798,6 +3798,90 @@ describe('$compile', function() {
     });
   });
 
+
+  describe('textarea contents', function() {
+    /* global msie: true */
+    var msieBackup;
+
+    beforeEach(function() {
+      msieBackup = msie;
+    });
+
+    afterEach(function() {
+      msie = msieBackup;
+    });
+
+
+    // Support: IE 9-11 only
+    // IE's page cache reinstates user-entered `<textarea>` values into the element's DOM text
+    // (CVE-2022-25869), so the contents of `<textarea>` elements must not be compiled on IE.
+    describe('on IE', function() {
+
+      beforeEach(function() {
+        msie = 11;
+      });
+
+
+      it('should not interpolate the contents of a textarea', inject(function($compile, $rootScope) {
+        element = $compile('<textarea>{{ 1 + 2 }}</textarea>')($rootScope);
+        $rootScope.$digest();
+        expect(element.val()).toBe('{{ 1 + 2 }}');
+        expect(element.text()).toBe('{{ 1 + 2 }}');
+      }));
+
+
+      it('should not evaluate expressions reinstated into a textarea\'s text', inject(
+          function($compile, $rootScope) {
+        element = $compile('<div><textarea>{{ $root.pwned = true }}</textarea>{{ 1 + 2 }}</div>')($rootScope);
+        $rootScope.$digest();
+        expect($rootScope.pwned).toBeUndefined();
+        expect(element.find('textarea').val()).toBe('{{ $root.pwned = true }}');
+        expect(element.text()).toBe('{{ $root.pwned = true }}3');
+      }));
+
+
+      it('should not evaluate expressions in a textarea inside transcluded content', inject(
+          function($compile, $rootScope) {
+        element = $compile(
+            '<div><div ng-if="true"><textarea>{{ $root.pwned = true }}</textarea></div></div>')($rootScope);
+        $rootScope.$digest();
+        expect($rootScope.pwned).toBeUndefined();
+        expect(element.find('textarea').length).toBe(1);
+        expect(element.find('textarea').val()).toBe('{{ $root.pwned = true }}');
+      }));
+
+
+      it('should still compile directives and attribute interpolation on the textarea itself', inject(
+          function($compile, $rootScope) {
+        $rootScope.name = 'misko';
+        element = $compile('<textarea ng-model="name" title="{{ 1 + 2 }}"></textarea>')($rootScope);
+        $rootScope.$digest();
+        expect(element.val()).toBe('misko');
+        expect(element.attr('title')).toBe('3');
+
+        element.val('adam');
+        browserTrigger(element, 'change');
+        expect($rootScope.name).toBe('adam');
+      }));
+    });
+
+
+    describe('on other browsers', function() {
+
+      beforeEach(function() {
+        msie = undefined;
+      });
+
+
+      it('should interpolate the contents of a textarea', inject(function($compile, $rootScope) {
+        element = $compile('<textarea>{{ 1 + 2 }}</textarea>')($rootScope);
+        $rootScope.$digest();
+        expect(element.val()).toBe('3');
+        expect(element.text()).toBe('3');
+      }));
+    });
+  });
+
   describe('collector', function() {
 
     var collected;

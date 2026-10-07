@@ -2520,7 +2520,12 @@ function $CompileProvider($provide, $$sanitizeUriProvider) {
           compile.$$addScopeClass(attrs.$$element);
         }
 
+        // Support: IE 9-11 only
+        // Do not compile the contents of `<textarea>` elements on IE. IE's page cache reinstates
+        // user-entered `<textarea>` values into the element's DOM text, so interpolating it would
+        // evaluate attacker-controlled expressions (CVE-2022-25869).
         childLinkFn = (nodeLinkFn && nodeLinkFn.terminal ||
+                      (msie && nodeName_(nodeList[i]) === 'textarea') ||
                       !(childNodes = nodeList[i].childNodes) ||
                       !childNodes.length)
             ? null
